@@ -1,0 +1,135 @@
+name: Build Unity Project
+
+on:
+  workflow_call:
+    inputs:
+      unityVersion:
+        required: true
+        type: string
+
+      buildTarget:
+        required: true
+        type: string
+
+      environmentName:
+        required: false
+        default: DES
+        type: string
+
+      projectPath:
+        required: false
+        default: .
+        type: string
+
+      publishToItch:
+        required: false
+        default: false
+        type: boolean
+
+      itchioChannel:
+        required: false
+        default: pax16/roguelike:webgl
+        type: string
+
+      sendToDiscord:
+        required: false
+        default: false
+        type: boolean
+
+    secrets:
+      UNITY_LICENSE:
+        required: true
+      UNITY_EMAIL:
+        required: true
+      UNITY_PASSWORD:
+        required: true
+      DISCORD_WEBHOOK_URL:
+        required: false
+      ITCHIO_API_KEY:
+        required: false
+
+jobs:
+  build:
+    name: Build ${{ inputs.buildTarget }}
+    runs-on: ubuntu-latest
+    env:
+      UNITY_VERSION: ${{ inputs.unityVersion }}
+      ENVIRONMENT_NAME: ${{ inputs.environmentName }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Cache Library
+        uses: actions/cache@v3
+        with:
+          path: ${{ inputs.projectPath }}/Library
+          key: Library-${{ inputs.buildTarget }}
+
+      - name: Set BUILD_VERSION
+        run: |
+          BASE_VERSION=$(grep "bundleVersion:" ProjectSettings/ProjectSettings.asset | awk '{print $2}')
+          echo "BASE_VERSION=$BASE_VERSION" >> $GITHUB_ENV
+          echo "BUILD_VERSION=${BASE_VERSION}.${{ github.run_number }}-${{ inputs.environmentName }}" >> $GITHUB_ENV
+
+      - name: Build with GameCI
+        uses: game-ci/unity-builder@v4
+        id: unityBuild
+        with:
+          unityVersion: ${{ inputs.unityVersion }}
+          targetPlatform: ${{ inputs.buildTarget }}
+          projectPath: ${{ inputs.projectPath }}
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+
+      - name: Calculate Build Size
+        run: |
+          BUILD_DIR=build/${{ inputs.buildTarget }}
+          if [ -d "$BUILD_DIR" ]; then
+            size=$(du -sh $BUILD_DIR | cut -f1)
+            echo "BUILD_SIZE=$size" >> $GITHUB_ENV
+          else
+            echo "BUILD_SIZE=N/A" >> $GITHUB_ENV
+          fi
+
+      - name: Save Build Metrics
+        run: |
+          echo '{
+            "branch": "${{ github.ref_name }}",
+            "build_target": "${{ inputs.buildTarget }}",
+            "build_size": "${{ env.BUILD_SIZE }}",
+            "build_version": "${{ env.BUILD_VERSION }}",
+            "commit": "${{ github.sha }}",
+            "date": "${{ github.event.head_commit.timestamp }}"
+          }' > build-metrics.json
+
+      - name: Upload Metrics Artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: build-metrics
+          path: build-metrics.json
+
+  upload-to-itchio:
+    if: ${{ inputs.publishToItch == true }}
+    needs: build
+    uses: ./.github/workflows/upload-itchio.yml
+    with:
+      buildPath: build/${{ inputs.buildTarget }}
+      itchioChannel: ${{ inputs.itchioChannel }}
+    secrets:
+      ITCHIO_API_KEY: ${{ secrets.ITCHIO_API_KEY }}
+
+  notify-discord:
+    if: ${{ inputs.sendToDiscord == true }}
+    needs: build
+    uses: ./.github/workflows/notify-discord.yml
+    with:
+      messageTitle: "🎮 Nueva build disponible"
+      buildTarget: ${{ inputs.buildTarget }}
+      buildVersion: ${{ env.BUILD_VERSION }}
+      buildSize: ${{ env.BUILD_SIZE }}
+      commitSha: ${{ github.sha }}
+    secrets:
+      DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}

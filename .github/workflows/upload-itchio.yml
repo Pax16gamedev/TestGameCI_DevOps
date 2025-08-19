@@ -1,0 +1,40 @@
+name: Upload to Itch.io
+
+on:
+  workflow_call:
+    inputs:
+      buildPath:
+        required: true
+        type: string
+      itchioChannel:
+        required: true
+        type: string
+    secrets:
+      ITCHIO_API_KEY:
+        required: true
+
+jobs:
+  upload:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Install butler
+        run: |
+          curl -L -o butler.zip https://broth.itch.ovh/butler/linux-amd64/LATEST/archive/default
+          unzip butler.zip
+          chmod +x butler
+          echo "$PWD" >> $GITHUB_PATH
+          echo "✅ Butler instalado"
+          ./butler -V
+
+      - name: Push to Itch.io
+        env:
+          BUTLER_API_KEY: ${{ secrets.ITCHIO_API_KEY }}
+        run: |
+          echo "🚀 Subiendo a itch.io en el canal: ${{ inputs.itchioChannel }}"
+          if [ -d "${{ inputs.buildPath }}" ]; then
+            ./butler push "${{ inputs.buildPath }}" "${{ inputs.itchioChannel }}"
+          else
+            echo "❌ No se encontró la carpeta: ${{ inputs.buildPath }}"
+            exit 1
+          fi

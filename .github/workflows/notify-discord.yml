@@ -1,0 +1,39 @@
+name: Notify Discord
+
+on:
+  workflow_call:
+    inputs:
+      status:
+        required: true
+        type: string
+      buildUrl:
+        required: false
+        type: string
+      projectName:
+        required: true
+        type: string
+      duration:
+        required: false
+        type: string
+    secrets:
+      DISCORD_WEBHOOK_URL:
+        required: true
+
+jobs:
+  send-notification:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send message to Discord
+        run: |
+          payload="{
+            \"content\": \"📢 **${{ inputs.projectName }}** build **${{ inputs.status }}**\",
+            \"embeds\": [{
+              \"title\": \"Build Details\",
+              \"fields\": [
+                { \"name\": \"Status\", \"value\": \"${{ inputs.status }}\", \"inline\": true },
+                { \"name\": \"Duration\", \"value\": \"${{ inputs.duration || 'N/A' }}\", \"inline\": true },
+                { \"name\": \"Link\", \"value\": \"[Ver build](${{ inputs.buildUrl || '#' }})\", \"inline\": false }
+              ]
+            }]
+          }"
+          curl -X POST -H "Content-Type: application/json" -d "$payload" ${{ secrets.DISCORD_WEBHOOK_URL }}

@@ -1,0 +1,22 @@
+name: Build Windows
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+    branches:
+      - '**'
+
+jobs:
+  build-windows:
+    uses: ./.github/workflows/build-core.yml
+    with:
+      unityVersion: 2022.3.10f1
+      buildTarget: StandaloneWindows64
+      environmentName: DES
+      publishToItch: false
+      sendToDiscord: true
+    secrets: inherit

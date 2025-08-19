@@ -1,0 +1,23 @@
+name: Build WebGL
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+    branches:
+      - '**'
+
+jobs:
+  build-webgl:
+    uses: ./.github/workflows/build-core.yml
+    with:
+      unityVersion: 2022.3.10f1
+      buildTarget: WebGL
+      environmentName: DES
+      publishToItch: true
+      itchioChannel: pax16/roguelike:webgl
+      sendToDiscord: true
+    secrets: inherit

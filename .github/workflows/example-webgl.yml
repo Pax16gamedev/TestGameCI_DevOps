@@ -1,0 +1,17 @@
+name: Build WebGL
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  build:
+    uses: tu-org/unity-ci-templates/.github/workflows/build-webgl.yml@main
+    with:
+      unityVersion: 2022.3.10f1         # override de version por si cambia
+      environmentName: DES             # se usara para el sufijo de build_version
+      publishToItch: true              # activa la subida a Itch.io
+      itchioChannel: pax16/roguelike:webgl
+      sendToDiscord: true
+    secrets: inherit
+
