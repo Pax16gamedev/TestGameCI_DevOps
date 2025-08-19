@@ -1,4 +1,4 @@
-name: Build WebGL
+name: Example - Build WebGL
 
 on:
   push:

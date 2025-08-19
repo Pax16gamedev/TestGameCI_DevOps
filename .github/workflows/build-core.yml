@@ -128,8 +128,8 @@ jobs:
     with:
       messageTitle: "🎮 Nueva build disponible"
       buildTarget: ${{ inputs.buildTarget }}
-      buildVersion: ${{ env.BUILD_VERSION }}
-      buildSize: ${{ env.BUILD_SIZE }}
+    #   buildVersion: ${{ env.BUILD_VERSION }}
+    #   buildSize: ${{ env.BUILD_SIZE }}
       commitSha: ${{ github.sha }}
     secrets:
       DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
