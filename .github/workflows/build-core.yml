@@ -4,37 +4,39 @@ on:
   workflow_call:
     inputs:
       unityVersion:
-        required: true
+        required: false
         type: string
+        default: 6000.2.10f1
+        description: 'Unity version to use for the build'
 
       buildTarget:
         required: true
         type: string
-
-      environmentName:
-        required: false
-        default: DES
-        type: string
+        description: 'Build target platform (e.g., WebGL, StandaloneWindows64) '
 
       projectPath:
         required: false
         default: .
         type: string
+        description: 'Path to the Unity project'
 
       publishToItch:
         required: false
         default: false
         type: boolean
+        description: 'Whether to publish the build to Itch.io'
 
       itchioChannel:
         required: false
-        default: pax16/roguelike:webgl
+        default: pax16/test-devops:webgl
         type: string
+        description: 'Itch.io channel to publish the build to'
 
       sendToDiscord:
         required: false
         default: false
         type: boolean
+        description: 'Whether to send a notification to Discord'
 
     secrets:
       UNITY_LICENSE:
@@ -49,67 +51,253 @@ on:
         required: false
 
 jobs:
+  validate-secrets:
+    name: Validate required secrets
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check if secrets are set
+        run: |
+          missing_secrets=()
+          if [ -z "${{ secrets.UNITY_EMAIL }}" ]; then
+            missing_secrets+=("EMAIL")
+          fi
+          if [ -z "${{ secrets.UNITY_PASSWORD }}" ]; then
+            missing_secrets+=("PASSWORD")
+          fi
+          if [ -z "${{ secrets.UNITY_LICENSE }}" ]; then
+            missing_secrets+=("LICENSE")
+          fi
+          if [ -z "${{ secrets.DISCORD_WEBHOOK_URL }}" ]; then
+            missing_secrets+=("DISCORD_WEBHOOK_URL")
+          fi
+
+          if [ ${#missing_secrets[@]} -ne 0 ]; then
+            echo "Error: The following secrets are not set: ${missing_secrets[@]} ❌."
+            exit 1
+          fi
+
+          if [ -z "${{ vars.PROJECT_NAME }}" ]; then
+            echo "Error: PROJECT_NAME variable is not set ❌."
+            echo "PROJECT_NAME=${{ github.event.repository.name }}" >> $GITHUB_ENV
+            echo "Setting PROJECT_NAME to ${{ vars.PROJECT_NAME }}"
+          fi
+
+          echo "OK - All set ✅."
+
+  free-disk-space:
+    name: Free space disk on Ubuntu
+    runs-on: ubuntu-latest
+    needs: validate-secrets
+    steps:
+      - name: Free Disk Space (Ubuntu)
+        uses: jlumbroso/free-disk-space@main
+        with:
+          tool-cache: false
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: true
+          docker-images: true
+          swap-storage: true
+
   build:
     name: Build ${{ inputs.buildTarget }}
     runs-on: ubuntu-latest
     env:
-      UNITY_VERSION: ${{ inputs.unityVersion }}
-      ENVIRONMENT_NAME: ${{ inputs.environmentName }}
+      UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+      UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+      UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+      UNITY_VERSION: ${{ vars.UNITY_VERSION }}
+    needs: [validate-secrets, free-disk-space]
+    outputs:
+      build_version: ${{ steps.versioning.outputs.build_version }}
+      link_action: ${{ steps.set-vars.outputs.link_action }}
+      status: ${{ steps.set-vars.outputs.status }}
+      color: ${{ steps.set-vars.outputs.color }}
+      build_size: ${{ steps.build-size.outputs.build_size }}
+      duration: ${{ steps.duration.outputs.formatted_duration }}
+      thumbnail_url: ${{ steps.set-vars.outputs.thumbnail_url }}
+      timestamp: ${{ steps.set-vars.outputs.timestamp }}
 
     steps:
+      - name: Set current date as env variable
+        run: echo "START_TIME=$(date -u +%s)" >> $GITHUB_ENV
+
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          lfs: true
 
       - name: Cache Library
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
-          path: ${{ inputs.projectPath }}/Library
+          path: |
+            Library
+            Temp
           key: Library-${{ inputs.buildTarget }}
+          restore-keys: Library-
 
-      - name: Set BUILD_VERSION
+      # Esto lee bundleVersion: 1.0 y guarda 1.0 en BASE_VERSION.
+      - name: Read Application.version from ProjectSettings
+        id: read-version
         run: |
-          BASE_VERSION=$(grep "bundleVersion:" ProjectSettings/ProjectSettings.asset | awk '{print $2}')
+          BASE_VERSION=$(grep bundleVersion ProjectSettings/ProjectSettings.asset | awk '{print $2}')
           echo "BASE_VERSION=$BASE_VERSION" >> $GITHUB_ENV
-          echo "BUILD_VERSION=${BASE_VERSION}.${{ github.run_number }}-${{ inputs.environmentName }}" >> $GITHUB_ENV
+           
+      - name: Set custom build version
+        id: versioning
+        run: |
+          RUN_NUMBER=${{ github.run_number }}
+          BRANCH="${{ github.ref_name }}"
+
+          if [[ "$BRANCH" == "DESARROLLO" ]]; then
+            BUILD_VERSION="${BASE_VERSION}.${RUN_NUMBER}-DES"
+          elif [[ "$BRANCH" == "PRE_PRODUCCION" ]]; then
+            BUILD_VERSION="${BASE_VERSION}.${RUN_NUMBER}-PRE"
+          else
+            BUILD_VERSION="${BASE_VERSION}.${RUN_NUMBER}"
+          fi
+
+          echo "BUILD_VERSION=$BUILD_VERSION" >> $GITHUB_ENV
+          echo "buildVersion=$BUILD_VERSION" >> $GITHUB_OUTPUT
 
       - name: Build with GameCI
         uses: game-ci/unity-builder@v4
         id: unityBuild
         with:
-          unityVersion: ${{ inputs.unityVersion }}
           targetPlatform: ${{ inputs.buildTarget }}
+          unityVersion: ${{ inputs.unityVersion }}
           projectPath: ${{ inputs.projectPath }}
+          versioning: Custom
+          version: ${{ env.BUILD_VERSION }}
+          buildName: ${{ vars.PROJECT_NAME }}
         env:
           UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
           UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
           UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
 
       - name: Calculate Build Size
+        id: build-size
         run: |
-          BUILD_DIR=build/${{ inputs.buildTarget }}
-          if [ -d "$BUILD_DIR" ]; then
-            size=$(du -sh $BUILD_DIR | cut -f1)
+          if [ -d build/${{ inputs.buildTarget }} ]; then
+            size=$(du -sh build/${{ inputs.buildTarget }} | cut -f1)
             echo "BUILD_SIZE=$size" >> $GITHUB_ENV
           else
             echo "BUILD_SIZE=N/A" >> $GITHUB_ENV
           fi
 
-      - name: Save Build Metrics
-        run: |
-          echo '{
-            "branch": "${{ github.ref_name }}",
-            "build_target": "${{ inputs.buildTarget }}",
-            "build_size": "${{ env.BUILD_SIZE }}",
-            "build_version": "${{ env.BUILD_VERSION }}",
-            "commit": "${{ github.sha }}",
-            "date": "${{ github.event.head_commit.timestamp }}"
-          }' > build-metrics.json
-
-      - name: Upload Metrics Artifact
-        uses: actions/upload-artifact@v3
+      # Upload Build
+      - name: Upload Build
+        uses: actions/upload-artifact@v4
         with:
-          name: build-metrics
-          path: build-metrics.json
+          name: Build-${{ vars.PROJECT_NAME }}-${{ inputs.buildTarget }}-${{ github.run_id }}
+          path: build/${{ inputs.buildTarget }}
+          if-no-files-found: "warn"
+
+      - name: Get Artifact ID
+        id: get-artifact-id
+        run: |
+          artifacts=$(curl -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+              -H "Accept: application/vnd.github+json" \
+              "https://api.github.com/repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts")
+
+          artifact_id=$(echo "$artifacts" | jq '.artifacts[0].id')
+          echo "Artifact ID: $artifact_id"
+          echo "artifact_id=$artifact_id" >> $GITHUB_OUTPUT
+
+      - name: Calculate Build Duration
+        if: always()
+        id: duration
+        run: |
+          echo "Workflow started at: ${{ env.START_TIME }}"
+          start_time=${{ env.START_TIME }}
+          end_time=$(date +%s)
+          duration=$((end_time - start_time))
+
+          echo "Start time (epoch): $start_time"
+          echo "End time (epoch): $end_time"
+          echo "Duration (seconds): $duration"
+
+          hours=$((duration / 3600))
+          minutes=$(((duration % 3600) / 60))
+          seconds=$((duration % 60))
+          formatted_duration=$(printf "%02d:%02d:%02d" $hours $minutes $seconds)
+
+          echo "formatted_duration=${formatted_duration}" >> $GITHUB_ENV
+
+      - name: Set variables
+        if: always()
+        id: set-vars
+        run: |
+          if [ "${{ job.status }}" == "success" ]; then
+            echo "STATUS=✅ La build ${{ inputs.buildTarget }} v${{ env.BUILD_VERSION }} para la rama **${{ github.ref_name }}** se ha completado con éxito." >> $GITHUB_ENV
+            echo "STATUS_CODE=ok" >> $GITHUB_ENV
+            echo "COLOR=3066993" >> $GITHUB_ENV
+            echo "THUMBNAIL_URL=https://e7.pngegg.com/pngimages/223/663/png-clipart-green-check-illustration-check-mark-checkbox-yes-miscellaneous-angle.png" >> $GITHUB_ENV
+          else
+            echo "STATUS=❌ La build ${{ inputs.buildTarget }} v${{ env.BUILD_VERSION }} para la rama **${{ github.ref_name }}** ha fallado." >> $GITHUB_ENV
+            echo "STATUS_CODE=fail" >> $GITHUB_ENV
+            echo "COLOR=15158332" >> $GITHUB_ENV
+            echo "THUMBNAIL_URL=https://e1.pngegg.com/pngimages/720/726/png-clipart-emoji-sticker-x-icon.png" >> $GITHUB_ENV
+          fi
+
+          echo "LINK_ACTION=https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts/${{ steps.get-artifact-id.outputs.artifact_id }}" >> $GITHUB_ENV
+          echo "TIMESTAMP=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> $GITHUB_ENV
+
+      - name: Generate build metrics JSON
+        if: always()
+        run: |
+          mkdir -p metrics
+          cat <<EOF > metrics/build-metrics.json
+          {
+            "project": "${{ vars.PROJECT_NAME }}",
+            "version": "${{ env.BUILD_VERSION }}",
+            "platform": "${{ inputs.buildTarget }}",
+            "branch": "${{ github.ref_name }}",
+            "status": "${{ env.STATUS_CODE }}",
+            "build_size": "${{ env.BUILD_SIZE }}",
+            "duration": "${{ env.formatted_duration }}",
+            "commit": "${{ github.sha }}",
+            "commit_message": "$(git log -1 --pretty=format:'%s')",
+            "author": "$(git log -1 --pretty=format:'%an')",
+            "date": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          }
+          EOF
+
+      - name: Upload build metrics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-metrics-${{ vars.PROJECT_NAME }}-${{ github.run_id }}
+          path: metrics/build-metrics.json
+
+      - name: Publish build summary
+        if: always()
+        run: |
+          echo "## 🛠️ Build Summary -  **v${{ env.BUILD_VERSION }}**" >> $GITHUB_STEP_SUMMARY
+          echo "- Plataforma: **${{ inputs.buildTarget }}**" >> $GITHUB_STEP_SUMMARY
+          echo "- Rama: **${{ github.ref_name }}**" >> $GITHUB_STEP_SUMMARY
+          echo "- Tamaño de la build: **${{ env.BUILD_SIZE }}**" >> $GITHUB_STEP_SUMMARY
+          echo "- Duración: `${{ env.formatted_duration }}`" >> $GITHUB_STEP_SUMMARY
+          echo "- Status: ${{ env.STATUS_CODE }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Resultado: ${{ env.STATUS }}" >> $GITHUB_STEP_SUMMARY
+
+          if [ "${{ job.status }}" != "success" ]; then
+            echo "- ❗ La compilacion ha fallado antes de completar el artefacto." >> $GITHUB_STEP_SUMMARY
+          fi
+
+          if [ "${{ env.BUILD_SIZE }}" != "N/A" ]; then
+            echo "- [🔗 Descargar artifact](${{ env.LINK_ACTION }})" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Show commit changes in summary
+        if: always()
+        run: |
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## 📦 Cambios incluidos en el commit" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          git log -1 --pretty=format:"%h - %s (%an)" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
 
   upload-to-itchio:
     if: ${{ inputs.publishToItch == true }}
@@ -126,10 +314,16 @@ jobs:
     needs: build
     uses: ./.github/workflows/notify-discord.yml
     with:
-      messageTitle: "🎮 Nueva build disponible"
-      buildTarget: ${{ inputs.buildTarget }}
-    #   buildVersion: ${{ env.BUILD_VERSION }}
-    #   buildSize: ${{ env.BUILD_SIZE }}
-      commitSha: ${{ github.sha }}
+      build_version: ${{ needs.build.outputs.build_version }}
+      link_action: ${{ needs.build.outputs.link_action }}
+      status: ${{ needs.build.outputs.status }}
+      color: ${{ needs.build.outputs.color }}
+      branch_name: ${{ github.ref_name }}
+      build_platform: ${{ inputs.buildTarget }}
+      build_size: ${{ needs.build.outputs.build_size }}
+      duration: ${{ needs.build.outputs.duration }}
+      project_name: ${{ vars.PROJECT_NAME }}
+      thumbnail_url: ${{ needs.build.outputs.thumbnail_url }}
+      timestamp: ${{ needs.build.outputs.timestamp }}
     secrets:
       DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}

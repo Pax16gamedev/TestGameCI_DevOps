@@ -4,17 +4,14 @@ on:
   workflow_dispatch:
   push:
     branches:
-      - main
-      - develop
-  pull_request:
-    branches:
-      - '**'
+      - PRE_PRODUCCION
+      - PRODUCCION
 
 jobs:
   build-webgl:
     uses: ./.github/workflows/build-core.yml
     with:
-      unityVersion: 2022.3.10f1
+      unityVersion: 6000.2.10f1
       buildTarget: WebGL
       environmentName: DES
       publishToItch: true

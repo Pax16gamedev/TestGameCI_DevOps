@@ -1,0 +1,14 @@
+name: Example - Build WebGL
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - PRE_PRODUCCION
+      - PRODUCCION
+
+jobs:
+  build-webgl:
+    uses: Pax16gamedev/Test_GameCI/.github/workflows/build-webgl.yml@DESARROLLO
+    secrets: inherit
+

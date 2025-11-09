@@ -3,37 +3,113 @@ name: Notify Discord
 on:
   workflow_call:
     inputs:
+      build_version:
+        required: true
+        type: string
+        description: 'Version of the build.'
+      link_action:
+        required: true
+        type: string
+        description: 'Link to the workflow run or artifact.'
       status:
         required: true
         type: string
-      buildUrl:
-        required: false
-        type: string
-      projectName:
+        description: 'Status message for the build.'
+      color:
         required: true
         type: string
-      duration:
-        required: false
+        description: 'Color code for the embed message.'
+      branch_name:
+        required: true
         type: string
+        description: 'Name of the branch.'
+      build_platform:
+        required: true
+        type: string
+        description: 'Platform of the build (buildTarget).'
+      build_size:
+        required: true
+        type: string
+        description: 'Size of the build.'
+      duration:
+        required: true
+        type: string
+        description: 'Duration of the build process.'
+      project_name:
+        required: true
+        type: string
+        description: 'Name of the project.'
+      thumbnail_url:
+        required: true
+        type: string
+        description: 'URL of the thumbnail image.'
+      timestamp:
+        required: true
+        type: string
+        description: 'Timestamp for the message.'
+      
     secrets:
       DISCORD_WEBHOOK_URL:
         required: true
 
 jobs:
-  send-notification:
+  # Set notification message
+  # Enlace de descarga directa al artifact por API: https://api.github.com/repos/${{ github.repository }}/actions/artifacts/${{ steps.get-artifact-id.outputs.artifact_id }}/zip
+  # Enlace público de descarga directa al artifact: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts/${{ steps.get-artifact-id.outputs.artifact_id }}
+  set-notification-message:
     runs-on: ubuntu-latest
+    name: Set Discord Notification Message
     steps:
-      - name: Send message to Discord
+      - name: Set environment variables
+        id: set-env
+        if: always()
         run: |
-          payload="{
-            \"content\": \"📢 **${{ inputs.projectName }}** build **${{ inputs.status }}**\",
-            \"embeds\": [{
-              \"title\": \"Build Details\",
-              \"fields\": [
-                { \"name\": \"Status\", \"value\": \"${{ inputs.status }}\", \"inline\": true },
-                { \"name\": \"Duration\", \"value\": \"${{ inputs.duration || 'N/A' }}\", \"inline\": true },
-                { \"name\": \"Link\", \"value\": \"[Ver build](${{ inputs.buildUrl || '#' }})\", \"inline\": false }
+          cat <<EOF > payload.json
+          {
+              "tts": false,
+              "embeds": [
+                {
+                  "title": "👷 Workflow terminado - v${{ inputs.build_version }}",
+                  "url": "${{ inputs.link_action }}",
+                  "description": "${{ inputs.status }}",
+                  "color": "${{ inputs.color }}",
+                  "fields": [
+                    { "name": "🌿 Rama ", "value": "${{ inputs.branch_name }}" },
+                    { "name": "🎮 Plataforma ", "value": "${{ inputs.build_platform }}" },
+                    { "name": "🔗 Tamaño build ", "value": ":${{ inputs.link_action }}" },
+                    { "name": "🔗 Enlace ", "value": "[Descargar artifact](${{ inputs.link_action }})" },
+                    { "name": "⏱️ Duración ", "value": "${{ inputs.duration }}" }
+                  ],
+                  "footer": {
+                    "text": "GitHub Actions - Discord Integration", 
+                    "icon_url": "https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png"
+                  },
+                  "author": {
+                    "name": "${{ inputs.project_name }}"
+                  },
+                  "thumbnail": {
+                    "url": "${{ inputs.thumbnail_url }}"
+                  },
+                  "timestamp": "${{ inputs.timestamp }}"
+                }
               ]
-            }]
-          }"
-          curl -X POST -H "Content-Type: application/json" -d "$payload" ${{ secrets.DISCORD_WEBHOOK_URL }}
+            }
+          EOF
+  
+      - name: Notify Discord
+        if: always()
+        run: |
+          if [ ! -f payload.json ]; then
+            echo '{"content": "Error al construir el mensaje JSON para Discord ❌❌❌."}' > payload.json
+          fi
+          
+          response_code=$(curl -s -o /dev/null -w "%{http_code}" -H "Content-Type: application/json" -d @payload.json ${{ secrets.DISCORD_WEBHOOK_URL }})
+
+          if [ "$response_code" -ge 400 ]; then
+            echo "Error: Discord API devolvió un código de estado $response_code ❌."
+            echo '{"content": "Error al enviar el mensaje a Discord ❌. [Ver workflow](${{ env.LINK_ACTION }})"}' > payload.json
+            curl -s -H "Content-Type: application/json" -d @payload.json ***
+          else
+            echo "Mensaje enviado con éxito ✅."
+          fi
+      

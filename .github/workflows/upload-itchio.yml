@@ -24,7 +24,7 @@ jobs:
           unzip butler.zip
           chmod +x butler
           echo "$PWD" >> $GITHUB_PATH
-          echo "✅ Butler instalado"
+          echo "✅ Butler instalado correctamente"
           ./butler -V
 
       - name: Push to Itch.io
