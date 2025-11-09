@@ -9,6 +9,6 @@ on:
 
 jobs:
   build-webgl:
-    uses: Pax16gamedev/Test_GameCI/.github/workflows/build-webgl.yml@DESARROLLO
+    uses: Pax16gamedev/TestGameCI_DevOps/.github/workflows/build-webgl.yml@DESARROLLO
     secrets: inherit
 

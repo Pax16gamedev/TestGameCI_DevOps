@@ -9,7 +9,7 @@ on:
 
 jobs:
   build-windows:
-    uses: Pax16gamedev/Test_GameCI/.github/workflows/build-windows.yml@DESARROLLO
+    uses: Pax16gamedev/TestGameCI_DevOps/.github/workflows/build-windows.yml@DESARROLLO
     with:
       unityVersion: 6000.2.10f1
       sendToDiscord: true

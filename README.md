@@ -64,17 +64,12 @@ on:
   workflow_dispatch:
   push:
     branches:
-      - main
       - PRE_PRODUCCION
+      - PRODUCCION
 
 jobs:
-  build:
-    uses: Pax16gamedev/Test_GameCI/.github/workflows/build-webgl.yml@DESARROLLO
-    with:
-      unityVersion: 6000.2.10f1
-      publishToItch: true
-      itchioChannel: pax16/mi-juego:webgl
-      sendToDiscord: true
+  build-webgl:
+    uses: Pax16gamedev/TestGameCI_DevOps/.github/workflows/build-webgl.yml@DESARROLLO
     secrets: inherit
 ```
 
@@ -89,11 +84,12 @@ on:
   workflow_dispatch:
   push:
     branches:
+      - PRE_PRODUCCION
       - PRODUCCION
 
 jobs:
-  build:
-    uses: Pax16gamedev/Test_GameCI/.github/workflows/build-windows.yml@DESARROLLO
+  build-windows:
+    uses: Pax16gamedev/TestGameCI_DevOps/.github/workflows/build-windows.yml@DESARROLLO
     with:
       unityVersion: 6000.2.10f1
       sendToDiscord: true
