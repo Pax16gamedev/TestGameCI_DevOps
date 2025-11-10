@@ -242,13 +242,11 @@ jobs:
           BUILD_PATH="build/${{ inputs.buildTarget }}"
           if [ -d $BUILD_PATH ]; then
             echo "📦 Calculando tamaño de la build en: $BUILD_PATH"
-            SIZE=$(du -sh "$BUILD_PATH" | awk '{print $1}')
+            SIZE=$(du -sh $BUILD_PATH | cut -f1)
             echo "BUILD_SIZE=$SIZE" >> $GITHUB_ENV
           else
             echo "BUILD_SIZE=N/A" >> $GITHUB_ENV
           fi
-          echo "build_size=$BUILD_SIZE" >> $GITHUB_OUTPUT
-          echo "✅ Build size: $BUILD_SIZE"
 
       # Upload Build
       - name: Upload Build
