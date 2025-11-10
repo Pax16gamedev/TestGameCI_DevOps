@@ -197,6 +197,28 @@ jobs:
           echo "custom_image=$IMAGE" >> $GITHUB_OUTPUT
           echo "🧩 Selected image: $IMAGE"
 
+      - name: 🧹 Prepare Docker environment
+        run: |
+          echo "📦 Docker space before:"
+          docker system df || true
+          echo ""
+          echo "🧹 Cleaning unused Docker data..."
+          docker system prune -af || true
+          echo ""
+          echo "📦 Docker space after cleanup:"
+          docker system df || true
+          echo ""
+          echo "🔽 Pulling Unity image: $CUSTOM_IMAGE"
+          if ! docker pull "$CUSTOM_IMAGE"; then
+            echo "⚠️ Imagen $CUSTOM_IMAGE no encontrada, usando variante -3"
+            FALLBACK_IMAGE="${CUSTOM_IMAGE%-1}-3"
+            docker pull "$FALLBACK_IMAGE"
+            echo "CUSTOM_IMAGE=$FALLBACK_IMAGE" >> $GITHUB_ENV
+          fi
+          echo ""
+          echo "📊 Espacio disponible después del pull:"
+          df -h /
+          echo "✅ Imagen lista."
 
       - name: Build with GameCI
         uses: game-ci/unity-builder@v4
