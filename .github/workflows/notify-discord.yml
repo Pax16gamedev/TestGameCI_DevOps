@@ -64,37 +64,53 @@ jobs:
         id: set-env
         if: always()
         run: |
+          # Asignar variables de los inputs a Bash
+          BUILD_VERSION="${{ inputs.build_version }}"
+          LINK_ACTION="${{ inputs.link_action }}"
+          STATUS="${{ inputs.status }}"
+          COLOR="${{ inputs.color }}"
+          BRANCH_NAME="${{ inputs.branch_name }}"
+          BUILD_PLATFORM="${{ inputs.build_platform }}"
+          BUILD_SIZE="${{ inputs.build_size }}"
+          DURATION="${{ inputs.duration }}"
+          PROJECT_NAME="${{ inputs.project_name }}"
+          THUMBNAIL_URL="${{ inputs.thumbnail_url }}"
+          TIMESTAMP="${{ inputs.timestamp }}"
+
           cat <<EOF > payload.json
           {
               "tts": false,
               "embeds": [
                 {
-                  "title": "👷 Workflow terminado - ${{ inputs.build_version }}",
-                  "url": "${{ inputs.link_action }}",
-                  "description": "${{ inputs.status }}",
-                  "color": "${{ inputs.color }}",
+                  "title": "👷 Workflow terminado - ${BUILD_VERSION}",
+                  "url": "${LINK_ACTION}",
+                  "description": "${STATUS}",
+                  "color": "${COLOR:-5814783}",
                   "fields": [
-                    { "name": "🌿 Rama ", "value": "${{ inputs.branch_name }}" },
-                    { "name": "🎮 Plataforma ", "value": "${{ inputs.build_platform }}" },
-                    { "name": "🔗 Tamaño build ", "value": ":${{ inputs.link_action }}" },
-                    { "name": "🔗 Enlace ", "value": "[Descargar artifact](${{ inputs.link_action }})" },
-                    { "name": "⏱️ Duración ", "value": "${{ inputs.duration }}" }
+                    { "name": "🌿 Rama ", "value": "${BRANCH_NAME}" },
+                    { "name": "🎮 Plataforma ", "value": "${BUILD_PLATFORM}" },
+                    { "name": "🔗 Tamaño build ", "value": ":${BUILD_SIZE:-N/A}" },
+                    { "name": "🔗 Enlace ", "value": "[Descargar artifact](${LINK_ACTION:-#})" },
+                    { "name": "⏱️ Duración ", "value": "${DURATION:-N/A}" }
                   ],
                   "footer": {
                     "text": "GitHub Actions - Discord Integration", 
                     "icon_url": "https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png"
                   },
                   "author": {
-                    "name": "${{ inputs.project_name }}"
+                    "name": "${PROJECT_NAME}"
                   },
                   "thumbnail": {
-                    "url": "${{ inputs.thumbnail_url }}"
+                    "url": "${THUMBNAIL_URL}"
                   },
-                  "timestamp": "${{ inputs.timestamp }}"
+                  "timestamp": "${TIMESTAMP:-$(date -u +'%Y-%m-%dT%H:%M:%SZ')}"
                 }
               ]
             }
           EOF
+
+          echo "✅ payload.json generado:"
+          cat payload.json
   
       - name: Notify Discord
         if: always()
@@ -140,14 +156,3 @@ jobs:
             echo "Discord status: ${{ steps.notify_discord.outputs.discord_status }}"
             echo "Fecha: $(date '+%Y-%m-%d %H:%M:%S')"
           } >> $GITHUB_STEP_SUMMARY
-
-
-
-# response_code=$(curl -s -o /dev/null -w "%{http_code}" -H "Content-Type: application/json" -d @payload.json ${{ secrets.DISCORD_WEBHOOK_URL }})
-# if [ "$response_code" -ge 400 ]; then
-#   echo "Error: Discord API devolvió un código de estado $response_code ❌."
-#   echo '{"content": "Error al enviar el mensaje a Discord ❌. [Ver workflow](${{ inputs.link_action }})"}' > payload.json
-#   curl -s -H "Content-Type: application/json" -d @payload.json ***
-# else
-#   echo "Mensaje enviado con éxito ✅."
-# fi

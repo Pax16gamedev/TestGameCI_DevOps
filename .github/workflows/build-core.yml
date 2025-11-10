@@ -199,12 +199,13 @@ jobs:
           else
             echo "BUILD_SIZE=N/A" >> $GITHUB_ENV
           fi
+          echo "Build size: $SIZE"
 
       # Upload Build
       - name: Upload Build
         uses: actions/upload-artifact@v4
         with:
-          name: Build-
+          name: Build-${{ env.BUILD_VERSION_FULL }}
           path: build/${{ inputs.buildTarget }}
           if-no-files-found: "warn"
 
@@ -284,7 +285,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: build-metrics-${{ vars.PROJECT_NAME }}-${{ github.run_id }}
+          name: build-metrics-${{ env.BUILD_VERSION_FULL }}
           path: metrics/build-metrics.json
 
       - name: Publish build summary
@@ -326,6 +327,16 @@ jobs:
           
             echo "## 📦 Cambios incluidos en el MERGE de $SOURCE_BRANCH → $TARGET_BRANCH"
             
+            # Si las ramas son iguales, no hay promoción
+            if [ "$SOURCE_BRANCH" = "$TARGET_BRANCH" ]; then
+              echo "ℹ️ **Ramas idénticas:** $SOURCE_BRANCH → $TARGET_BRANCH"
+              echo ""
+              echo "No se ha detectado una promoción entre ramas diferentes, por lo que no se listan commits ni archivos modificados."
+              echo ""
+              echo "**Fecha de generación:** $(date '+%Y-%m-%d %H:%M:%S')"
+              exit 0
+            fi
+
             # Buscar el commit base común
             MERGE_BASE=$(git merge-base $SOURCE_BRANCH $TARGET_BRANCH)
             echo "**Rango de commits:** ${MERGE_BASE:0:7}..$(git rev-parse --short $SOURCE_BRANCH)"

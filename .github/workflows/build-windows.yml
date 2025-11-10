@@ -34,7 +34,7 @@ on:
         required: false
 
 jobs:
-  build-windows:
+  build:
     name: 🪟 Build Windows
     uses: Pax16gamedev/TestGameCI_DevOps/.github/workflows/build-core.yml@DESARROLLO
     with:

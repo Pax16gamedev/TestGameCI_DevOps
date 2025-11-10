@@ -33,7 +33,7 @@ on:
       ITCHIO_API_KEY:
         required: false
 jobs:
-  build-webgl:
+  build:
     name: 🌐 Build WebGL
     uses: Pax16gamedev/TestGameCI_DevOps/.github/workflows/build-core.yml@DESARROLLO
     with:
