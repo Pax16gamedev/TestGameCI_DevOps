@@ -17,11 +17,6 @@ on:
         required: false
         type: boolean
         description: 'Whether to publish the build to Itch.io.'
-      itchioChannel:
-        required: false
-        default: pax16/test-devops:webgl
-        type: string
-        description: 'Itch.io channel to publish the build to'
       sendToDiscord: 
         required: false
         type: boolean
@@ -40,11 +35,10 @@ on:
 jobs:
   build:
     name: 🌐 Build WebGL
-    uses: ./.github/workflows/build-core.yml@main
+    uses: Pax16gamedev/TestGameCI_DevOps/.github/workflows/build-core.yml@DESARROLLO
     with:
       unityVersion: ${{ inputs.unityVersion }}
       buildTarget: WebGL
       publishToItch: ${{ inputs.publishToItch }}
-      itchioChannel: ${{ inputs.itchioChannel }}
       sendToDiscord: ${{ inputs.sendToDiscord }}
     secrets: inherit
