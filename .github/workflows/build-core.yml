@@ -151,11 +151,16 @@ jobs:
         run: |
           RUN_ID=${{ github.run_id }}
           BRANCH="${{ github.ref_name }}"
+          PROJECT_NAME="${{ vars.PROJECT_NAME }}"
+          BUILD_TARGET="${{ inputs.buildTarget }}"
+          DATETIME_NOW=$(date +'%Y%m%d')
 
           if [[ "$BRANCH" == "DESARROLLO" ]]; then
             BUILD_VERSION="${BASE_VERSION}-${RUN_ID}-DES"
           elif [[ "$BRANCH" == "PRE_PRODUCCION" ]]; then
             BUILD_VERSION="${BASE_VERSION}-${RUN_ID}-PRE"
+          elif [[ "$BRANCH" == "PRODUCCION" ]]; then
+            BUILD_VERSION="${BASE_VERSION}-${RUN_ID}-PRO"
           else
             BUILD_VERSION="${BASE_VERSION}-${RUN_ID}"
           fi
@@ -163,8 +168,11 @@ jobs:
           echo "BUILD_VERSION=$BUILD_VERSION" >> $GITHUB_ENV
           echo "buildVersion=$BUILD_VERSION" >> $GITHUB_OUTPUT
 
-          echo "BUILD_VERSION_FULL=${{ vars.PROJECT_NAME }}-${{ inputs.buildTarget }}-v${BUILD_VERSION}-${DATETIME_NOW}" >> $GITHUB_ENV
+          BUILD_VERSION_FULL="${PROJECT_NAME}-${BUILD_TARGET}-v${BUILD_VERSION}-${DATETIME_NOW}"
+          echo "BUILD_VERSION_FULL=$BUILD_VERSION_FULL" >> $GITHUB_ENV
           echo "buildVersionFull=$BUILD_VERSION_FULL" >> $GITHUB_OUTPUT
+
+          echo "✅ Build version generada: $BUILD_VERSION_FULL"
 
       - name: Build with GameCI
         uses: game-ci/unity-builder@v4
@@ -185,8 +193,9 @@ jobs:
         id: build-size
         run: |
           if [ -d build/${{ inputs.buildTarget }} ]; then
-            size=$(du -sh build/${{ inputs.buildTarget }} | cut -f1)
-            echo "BUILD_SIZE=$size" >> $GITHUB_ENV
+            $(du -sh "${{ inputs.buildTarget }}" | tee size.txt)
+            SIZE=$(awk '{print $1}' size.txt)
+            echo "BUILD_SIZE=$SIZE" >> $GITHUB_ENV
           else
             echo "BUILD_SIZE=N/A" >> $GITHUB_ENV
           fi
@@ -228,7 +237,9 @@ jobs:
           seconds=$((duration % 60))
           formatted_duration=$(printf "%02d:%02d:%02d" $hours $minutes $seconds)
 
-          echo "formatted_duration=${formatted_duration}" >> $GITHUB_ENV
+          echo "formatted_duration=$formatted_duration" >> $GITHUB_ENV
+          echo "formatted_duration=$formatted_duration" >> $GITHUB_OUTPUT
+          echo "Total time: $formatted_duration"
 
       - name: Set variables
         if: always()
@@ -284,7 +295,7 @@ jobs:
             echo "- Plataforma: **${{ inputs.buildTarget }}**"
             echo "- Rama: **${{ github.ref_name }}**"
             echo "- Tamaño de la build: **${{ env.BUILD_SIZE }}**"
-            echo "- Duración: `${{ env.formatted_duration }}`"
+            echo "- Duración: `${{ steps.duration.outputs.formatted_duration || 'N/A' }}`"
             echo "- Status: ${{ env.STATUS_CODE }}"
             echo "- Resultado: ${{ env.STATUS }}"
 

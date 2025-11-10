@@ -34,6 +34,7 @@ on:
         required: false
 jobs:
   build-webgl:
+    name: 🌐 Build WebGL
     uses: Pax16gamedev/TestGameCI_DevOps/.github/workflows/build-core.yml@DESARROLLO
     with:
       unityVersion: ${{ inputs.unityVersion }}
