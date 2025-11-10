@@ -110,7 +110,7 @@ jobs:
       UNITY_VERSION: ${{ vars.UNITY_VERSION }}
     needs: [validate-secrets, free-disk-space]
     outputs:
-      build_version_full: ${{ steps.versioning.outputs.build_version_full }}
+      build_version_full: ${{ steps.versioning.outputs.buildVersionFull }}
       link_action: ${{ steps.set-vars.outputs.link_action }}
       status: ${{ steps.set-vars.outputs.status }}
       color: ${{ steps.set-vars.outputs.color }}
@@ -124,6 +124,8 @@ jobs:
         run: |
           echo "START_TIME=$(date -u +%s)" >> $GITHUB_ENV
           echo "DATETIME_NOW=$(date +'%Y%m%d')" >> $GITHUB_ENV
+          echo "✅ Start time set to $START_TIME"
+          echo "✅ Date now set to $DATETIME_NOW"
 
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -145,24 +147,24 @@ jobs:
         run: |
           BASE_VERSION=$(grep bundleVersion ProjectSettings/ProjectSettings.asset | awk '{print $2}')
           echo "BASE_VERSION=$BASE_VERSION" >> $GITHUB_ENV
+          echo "✅ Base Version: $BASE_VERSION"
            
       - name: Set custom build version
         id: versioning
         run: |
-          RUN_ID=${{ github.run_id }}
           BRANCH="${{ github.ref_name }}"
           PROJECT_NAME="${{ vars.PROJECT_NAME }}"
           BUILD_TARGET="${{ inputs.buildTarget }}"
           DATETIME_NOW=$(date +'%Y%m%d')
 
           if [[ "$BRANCH" == "DESARROLLO" ]]; then
-            BUILD_VERSION="${BASE_VERSION}-${RUN_ID}-DES"
+            BUILD_VERSION="${BASE_VERSION}-DES"
           elif [[ "$BRANCH" == "PRE_PRODUCCION" ]]; then
-            BUILD_VERSION="${BASE_VERSION}-${RUN_ID}-PRE"
+            BUILD_VERSION="${BASE_VERSION}-PRE"
           elif [[ "$BRANCH" == "PRODUCCION" ]]; then
-            BUILD_VERSION="${BASE_VERSION}-${RUN_ID}-PRO"
+            BUILD_VERSION="${BASE_VERSION}-PRO"
           else
-            BUILD_VERSION="${BASE_VERSION}-${RUN_ID}"
+            BUILD_VERSION="${BASE_VERSION}-??"
           fi
 
           echo "BUILD_VERSION=$BUILD_VERSION" >> $GITHUB_ENV
@@ -193,13 +195,14 @@ jobs:
         id: build-size
         run: |
           if [ -d build/${{ inputs.buildTarget }} ]; then
-            $(du -sh "${{ inputs.buildTarget }}" | tee size.txt)
+            $(du -sh "build/${{ inputs.buildTarget }}" | tee size.txt)
             SIZE=$(awk '{print $1}' size.txt)
             echo "BUILD_SIZE=$SIZE" >> $GITHUB_ENV
           else
             echo "BUILD_SIZE=N/A" >> $GITHUB_ENV
           fi
-          echo "Build size: $SIZE"
+          echo "build_size=$BUILD_SIZE" >> $GITHUB_OUTPUT
+          echo "✅ Build size: $BUILD_SIZE"
 
       # Upload Build
       - name: Upload Build
@@ -239,27 +242,58 @@ jobs:
           formatted_duration=$(printf "%02d:%02d:%02d" $hours $minutes $seconds)
 
           echo "formatted_duration=$formatted_duration" >> $GITHUB_ENV
-          echo "formatted_duration=$formatted_duration" >> $GITHUB_OUTPUT
+          echo "duration=$formatted_duration" >> $GITHUB_OUTPUT
           echo "Total time: $formatted_duration"
 
       - name: Set variables
         if: always()
         id: set-vars
         run: |
+          # Variables comunes
+          BUILD_TARGET="${{ inputs.buildTarget }}"
+          BRANCH="${{ github.ref_name }}"
+          BUILD_VERSION="${{ env.BUILD_VERSION }}"
+          ARTIFACT_ID="${{ steps.get-artifact-id.outputs.artifact_id }}"
+          REPO_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts/${ARTIFACT_ID}"
+          TIMESTAMP=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+
+          # Condicional por estado del job
           if [ "${{ job.status }}" == "success" ]; then
-            echo "STATUS=✅ La build ${{ inputs.buildTarget }} v${{ env.BUILD_VERSION }} para la rama **${{ github.ref_name }}** se ha completado con éxito." >> $GITHUB_ENV
-            echo "STATUS_CODE=ok" >> $GITHUB_ENV
-            echo "COLOR=3066993" >> $GITHUB_ENV
-            echo "THUMBNAIL_URL=https://e7.pngegg.com/pngimages/223/663/png-clipart-green-check-illustration-check-mark-checkbox-yes-miscellaneous-angle.png" >> $GITHUB_ENV
+            STATUS_MSG="✅ La build ${BUILD_TARGET} v${BUILD_VERSION} para la rama **${BRANCH}** se ha completado con éxito."
+            STATUS_CODE="OK"
+            COLOR=3066993
+            THUMBNAIL="https://e7.pngegg.com/pngimages/223/663/png-clipart-green-check-illustration-check-mark-checkbox-yes-miscellaneous-angle.png"
           else
-            echo "STATUS=❌ La build ${{ inputs.buildTarget }} v${{ env.BUILD_VERSION }} para la rama **${{ github.ref_name }}** ha fallado." >> $GITHUB_ENV
-            echo "STATUS_CODE=fail" >> $GITHUB_ENV
-            echo "COLOR=15158332" >> $GITHUB_ENV
-            echo "THUMBNAIL_URL=https://e1.pngegg.com/pngimages/720/726/png-clipart-emoji-sticker-x-icon.png" >> $GITHUB_ENV
+            STATUS_MSG="❌ La build ${BUILD_TARGET} v${BUILD_VERSION} para la rama **${BRANCH}** ha fallado."
+            STATUS_CODE="FAIL"
+            COLOR=15158332
+            THUMBNAIL="https://e1.pngegg.com/pngimages/720/726/png-clipart-emoji-sticker-x-icon.png"
           fi
 
-          echo "LINK_ACTION=https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts/${{ steps.get-artifact-id.outputs.artifact_id }}" >> $GITHUB_ENV
-          echo "TIMESTAMP=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> $GITHUB_ENV
+          # Exportar a entorno global (GITHUB_ENV)
+          {
+            echo "STATUS=${STATUS_MSG}"
+            echo "STATUS_CODE=${STATUS_CODE}"
+            echo "COLOR=${COLOR}"
+            echo "THUMBNAIL_URL=${THUMBNAIL}"
+            echo "LINK_ACTION=${REPO_URL}"
+            echo "TIMESTAMP=${TIMESTAMP}"
+          } >> $GITHUB_ENV
+
+          # Exportar a outputs (para otros workflows)
+          {
+            echo "status=${STATUS_MSG}"
+            echo "status_code=${STATUS_CODE}"
+            echo "color=${COLOR}"
+            echo "thumbnail_url=${THUMBNAIL}"
+            echo "link_action=${REPO_URL}"
+            echo "timestamp=${TIMESTAMP}"
+          } >> $GITHUB_OUTPUT
+
+          echo "✅ Variables de estado establecidas correctamente:"
+          echo "  - STATUS_CODE: $STATUS_CODE"
+          echo "  - LINK_ACTION: $REPO_URL"
+          echo "  - TIMESTAMP: $TIMESTAMP"
 
       - name: Generate build metrics JSON
         if: always()
@@ -274,8 +308,6 @@ jobs:
             "status": "${{ env.STATUS_CODE }}",
             "build_size": "${{ env.BUILD_SIZE }}",
             "duration": "${{ env.formatted_duration }}",
-            "commit": "${{ github.sha }}",
-            "commit_message": "$(git log -1 --pretty=format:'%s')",
             "author": "$(git log -1 --pretty=format:'%an')",
             "date": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
           }
@@ -296,7 +328,7 @@ jobs:
             echo "- Plataforma: **${{ inputs.buildTarget }}**"
             echo "- Rama: **${{ github.ref_name }}**"
             echo "- Tamaño de la build: **${{ env.BUILD_SIZE }}**"
-            echo "- Duración: `${{ steps.duration.outputs.formatted_duration || 'N/A' }}`"
+            echo "- Duración: `${{ env.formatted_duration || 'N/A' }}`"
             echo "- Status: ${{ env.STATUS_CODE }}"
             echo "- Resultado: ${{ env.STATUS }}"
 
