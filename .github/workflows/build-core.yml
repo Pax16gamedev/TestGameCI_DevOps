@@ -115,7 +115,7 @@ jobs:
       status: ${{ steps.set-vars.outputs.status }}
       color: ${{ steps.set-vars.outputs.color }}
       build_size: ${{ steps.build-size.outputs.build_size }}
-      duration: ${{ steps.duration.outputs.formatted_duration }}
+      duration: ${{ steps.duration.outputs.duration }}
       thumbnail_url: ${{ steps.set-vars.outputs.thumbnail_url }}
       timestamp: ${{ steps.set-vars.outputs.timestamp }}
 
@@ -240,7 +240,7 @@ jobs:
         id: build-size
         run: |
           BUILD_PATH="build/${{ inputs.buildTarget }}"
-          if [ -d build/$BUILD_PATH ]; then
+          if [ -d $BUILD_PATH ]; then
             echo "📦 Calculando tamaño de la build en: $BUILD_PATH"
             SIZE=$(du -sh "$BUILD_PATH" | awk '{print $1}')
             echo "BUILD_SIZE=$SIZE" >> $GITHUB_ENV
