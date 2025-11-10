@@ -82,7 +82,7 @@ jobs:
             echo "Setting PROJECT_NAME to ${{ vars.PROJECT_NAME }}"
           fi
 
-          echo "OK - All set ✅."
+          echo "✅ OK - All set."
 
   free-disk-space:
     name: Free space disk on Ubuntu
@@ -120,10 +120,14 @@ jobs:
       timestamp: ${{ steps.set-vars.outputs.timestamp }}
 
     steps:
-      - name: Set current date as env variable
+      - name: 🕒 Set current date as env variable
         run: |
-          echo "START_TIME=$(date -u +%s)" >> $GITHUB_ENV
-          echo "DATETIME_NOW=$(date +'%Y%m%d')" >> $GITHUB_ENV
+          START_TIME=$(date -u +%s)
+          DATETIME_NOW=$(date +'%Y%m%d')
+
+          echo "START_TIME=$START_TIME" >> $GITHUB_ENV
+          echo "DATETIME_NOW=$DATETIME_NOW" >> $GITHUB_ENV
+
           echo "✅ Start time set to $START_TIME"
           echo "✅ Date now set to $DATETIME_NOW"
 
@@ -176,6 +180,24 @@ jobs:
 
           echo "✅ Build version generada: $BUILD_VERSION_FULL"
 
+      - name: Select Unity Docker image
+        id: select-image
+        run: |
+          UNITY_VERSION="${{ inputs.unityVersion }}"
+          BUILD_TARGET="${{ inputs.buildTarget }}"
+
+          case "$BUILD_TARGET" in
+            WebGL) IMAGE="unityci/editor:ubuntu-${UNITY_VERSION}-webgl-1" ;;
+            StandaloneWindows64) IMAGE="unityci/editor:ubuntu-${UNITY_VERSION}-windows-mono-1" ;;
+            Android) IMAGE="unityci/editor:ubuntu-${UNITY_VERSION}-android-1" ;;
+            *) IMAGE="unityci/editor:ubuntu-${UNITY_VERSION}-base-1" ;;
+          esac
+
+          echo "CUSTOM_IMAGE=$IMAGE" >> $GITHUB_ENV
+          echo "custom_image=$IMAGE" >> $GITHUB_OUTPUT
+          echo "🧩 Selected image: $IMAGE"
+
+
       - name: Build with GameCI
         uses: game-ci/unity-builder@v4
         id: unityBuild
@@ -186,6 +208,7 @@ jobs:
           versioning: Custom
           version: ${{ env.BUILD_VERSION }}
           buildName: ${{ vars.PROJECT_NAME }}
+          customImage: ${{ env.CUSTOM_IMAGE }}
         env:
           UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
           UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
@@ -194,9 +217,10 @@ jobs:
       - name: Calculate Build Size
         id: build-size
         run: |
-          if [ -d build/${{ inputs.buildTarget }} ]; then
-            $(du -sh "build/${{ inputs.buildTarget }}" | tee size.txt)
-            SIZE=$(awk '{print $1}' size.txt)
+          BUILD_PATH="build/${{ inputs.buildTarget }}"
+          if [ -d build/$BUILD_PATH ]; then
+            echo "📦 Calculando tamaño de la build en: $BUILD_PATH"
+            SIZE=$(du -sh "$BUILD_PATH" | awk '{print $1}')
             echo "BUILD_SIZE=$SIZE" >> $GITHUB_ENV
           else
             echo "BUILD_SIZE=N/A" >> $GITHUB_ENV
@@ -223,7 +247,7 @@ jobs:
           echo "Artifact ID: $artifact_id"
           echo "artifact_id=$artifact_id" >> $GITHUB_OUTPUT
 
-      - name: Calculate Build Duration
+      - name: ⏱️ Calculate Build Duration
         if: always()
         id: duration
         run: |
@@ -259,12 +283,12 @@ jobs:
 
           # Condicional por estado del job
           if [ "${{ job.status }}" == "success" ]; then
-            STATUS_MSG="✅ La build ${BUILD_TARGET} v${BUILD_VERSION} para la rama **${BRANCH}** se ha completado con éxito."
+            STATUS_MSG="✅ La build **${BUILD_TARGET}** v${BUILD_VERSION} para la rama **${BRANCH}** se ha completado con éxito."
             STATUS_CODE="OK"
             COLOR=3066993
             THUMBNAIL="https://e7.pngegg.com/pngimages/223/663/png-clipart-green-check-illustration-check-mark-checkbox-yes-miscellaneous-angle.png"
           else
-            STATUS_MSG="❌ La build ${BUILD_TARGET} v${BUILD_VERSION} para la rama **${BRANCH}** ha fallado."
+            STATUS_MSG="❌ La build **${BUILD_TARGET}** v${BUILD_VERSION} para la rama **${BRANCH}** ha fallado."
             STATUS_CODE="FAIL"
             COLOR=15158332
             THUMBNAIL="https://e1.pngegg.com/pngimages/720/726/png-clipart-emoji-sticker-x-icon.png"
@@ -317,7 +341,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: build-metrics-${{ env.BUILD_VERSION_FULL }}
+          name: metrics-${{ env.BUILD_VERSION_FULL }}
           path: metrics/build-metrics.json
 
       - name: Publish build summary
