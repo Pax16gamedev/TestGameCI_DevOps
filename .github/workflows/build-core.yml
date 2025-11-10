@@ -247,6 +247,8 @@ jobs:
           else
             echo "BUILD_SIZE=N/A" >> $GITHUB_ENV
           fi
+          echo "build_size=$SIZE" >> $GITHUB_OUTPUT
+          echo "✅ Tamaño de la build: $SIZE"
 
       # Upload Build
       - name: Upload Build
