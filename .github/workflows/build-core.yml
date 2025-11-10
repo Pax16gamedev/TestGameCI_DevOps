@@ -152,7 +152,7 @@ jobs:
           BASE_VERSION=$(grep bundleVersion ProjectSettings/ProjectSettings.asset | awk '{print $2}')
           echo "BASE_VERSION=$BASE_VERSION" >> $GITHUB_ENV
           echo "✅ Base Version: $BASE_VERSION"
-           
+
       - name: Set custom build version
         id: versioning
         run: |
@@ -180,51 +180,44 @@ jobs:
 
           echo "✅ Build version generada: $BUILD_VERSION_FULL"
 
-      - name: Select Unity Docker image
-        id: select-image
-        run: |
-          UNITY_VERSION="${{ inputs.unityVersion }}"
-          BUILD_TARGET="${{ inputs.buildTarget }}"
-
-          case "$BUILD_TARGET" in
-            WebGL) IMAGE="unityci/editor:ubuntu-2023.1.8f1-webgl-1.1.2" ;;
-            StandaloneWindows64) IMAGE="unityci/editor:ubuntu-${UNITY_VERSION}-windows-mono-1" ;;
-            Android) IMAGE="unityci/editor:ubuntu-${UNITY_VERSION}-android-1" ;;
-            *) IMAGE="unityci/editor:ubuntu-${UNITY_VERSION}-base-1" ;;
-          esac
-
-          echo "CUSTOM_IMAGE=$IMAGE" >> $GITHUB_ENV
-          echo "custom_image=$IMAGE" >> $GITHUB_OUTPUT
-          echo "🧩 Selected image: $IMAGE"
-
       # Limpieza agresiva SIN sudo (borra caches de runner y Docker)
       - name: 🧹 Aggressive cleanup (no sudo)
         run: |
           echo "🧹 Cleaning environment to free space..."
           rm -rf $AGENT_TOOLSDIRECTORY $RUNNER_TOOL_CACHE ~/.cache || true
+          rm -rf /tmp/*
+          rm -rf /opt/*
           docker system prune -af || true
           echo ""
           echo "📊 Free space after cleanup:"
           df -h /
-          echo ""
-          echo "📦 Docker disk usage after cleanup:"
-          docker system df || true
 
-      - name: 🧹 Pre-pull Unity Docker image
+      - name: 🎯 Select & Display Unity version
+        id: select-unity-version
         run: |
-          echo "🔽 Pulling Unity image: $CUSTOM_IMAGE"
-          if ! docker pull "$CUSTOM_IMAGE"; then
-            echo "⚠️ Imagen $CUSTOM_IMAGE no encontrada, usando variante -3"
-            FALLBACK_IMAGE="${CUSTOM_IMAGE%-1}-3"
-            docker pull "$FALLBACK_IMAGE"
-            echo "CUSTOM_IMAGE=$FALLBACK_IMAGE" >> $GITHUB_ENV
+          BUILD_TARGET="${{ inputs.buildTarget }}"
+          UNITY_VERSION_INPUT="${{ inputs.unityVersion }}"
+          
+          # ✅ Si el target es WebGL, usar una versión más ligera (2022.x)
+          if [ "$BUILD_TARGET" = "WebGL" ]; then
+            UNITY_VERSION="2022.3.9f1"
+            echo "⚙️ Target WebGL detectado → usando versión optimizada $UNITY_VERSION"
+          else
+            UNITY_VERSION="$UNITY_VERSION_INPUT"
+            echo "🎮 Target $BUILD_TARGET → usando versión por input $UNITY_VERSION"
           fi
-          echo ""
-          echo "📦 Docker images on disk:"
-          docker system df || true
-          echo "📊 Espacio disponible después del pull:"
-          df -h /
-          echo "✅ Imagen lista."
+
+          echo "UNITY_VERSION=$UNITY_VERSION" >> $GITHUB_ENV
+          echo "unity_version=$UNITY_VERSION" >> $GITHUB_OUTPUT
+          echo "🎯 Unity version final: $UNITY_VERSION"
+
+      - name: 🧾 Unity version summary
+        run: |
+          {
+            echo "## 🎯 Unity Version Used"
+            echo "- Plataforma: **${{ inputs.buildTarget }}**"
+            echo "- Version final: **${{ env.UNITY_VERSION }}**" 
+          } >> $GITHUB_STEP_SUMMARY          
 
       - name: 🏗️ Build with GameCI
         uses: game-ci/unity-builder@v4
@@ -236,7 +229,6 @@ jobs:
           versioning: Custom
           version: ${{ env.BUILD_VERSION }}
           buildName: ${{ vars.PROJECT_NAME }}
-          customImage: ${{ env.CUSTOM_IMAGE }}
         env:
           UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
           UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
