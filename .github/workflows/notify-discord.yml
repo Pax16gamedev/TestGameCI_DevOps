@@ -89,9 +89,9 @@ jobs:
                   "fields": [
                     { "name": "🌿 Rama ", "value": "${BRANCH_NAME}" },
                     { "name": "🎮 Plataforma ", "value": "${BUILD_PLATFORM}" },
-                    { "name": "🔗 Tamaño build ", "value": ":${BUILD_SIZE:-N/A}" },
-                    { "name": "🔗 Enlace ", "value": "[Descargar artifact](${LINK_ACTION:-#})" },
-                    { "name": "⏱️ Duración ", "value": "${DURATION:-N/A}" }
+                    { "name": "🔗 Tamaño build ", "value": ":${BUILD_SIZE}" },
+                    { "name": "🔗 Enlace ", "value": "[Descargar artifact](${LINK_ACTION})" },
+                    { "name": "⏱️ Duración ", "value": "${DURATION}" }
                   ],
                   "footer": {
                     "text": "GitHub Actions - Discord Integration", 
