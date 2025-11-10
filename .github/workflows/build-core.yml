@@ -91,9 +91,9 @@ jobs:
     steps:
       - name: Free Disk Space (Ubuntu)
         uses: jlumbroso/free-disk-space@main
-        with:
-          tool-cache: false
-          android: false
+        with: # A true lo borra.
+          tool-cache: true
+          android: true 
           dotnet: true
           haskell: true
           large-packages: true
@@ -197,17 +197,21 @@ jobs:
           echo "custom_image=$IMAGE" >> $GITHUB_OUTPUT
           echo "🧩 Selected image: $IMAGE"
 
-      - name: 🧹 Prepare Docker environment
+      # Limpieza agresiva SIN sudo (borra caches de runner y Docker)
+      - name: 🧹 Aggressive cleanup (no sudo)
         run: |
-          echo "📦 Docker space before:"
-          docker system df || true
-          echo ""
-          echo "🧹 Cleaning unused Docker data..."
+          echo "🧹 Cleaning environment to free space..."
+          rm -rf $AGENT_TOOLSDIRECTORY $RUNNER_TOOL_CACHE ~/.cache || true
           docker system prune -af || true
           echo ""
-          echo "📦 Docker space after cleanup:"
-          docker system df || true
+          echo "📊 Free space after cleanup:"
+          df -h /
           echo ""
+          echo "📦 Docker disk usage after cleanup:"
+          docker system df || true
+
+      - name: 🧹 Pre-pull Unity Docker image
+        run: |
           echo "🔽 Pulling Unity image: $CUSTOM_IMAGE"
           if ! docker pull "$CUSTOM_IMAGE"; then
             echo "⚠️ Imagen $CUSTOM_IMAGE no encontrada, usando variante -3"
@@ -216,11 +220,13 @@ jobs:
             echo "CUSTOM_IMAGE=$FALLBACK_IMAGE" >> $GITHUB_ENV
           fi
           echo ""
+          echo "📦 Docker images on disk:"
+          docker system df || true
           echo "📊 Espacio disponible después del pull:"
           df -h /
           echo "✅ Imagen lista."
 
-      - name: Build with GameCI
+      - name: 🏗️ Build with GameCI
         uses: game-ci/unity-builder@v4
         id: unityBuild
         with:
