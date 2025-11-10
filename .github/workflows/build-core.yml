@@ -370,20 +370,20 @@ jobs:
         if: always()
         run: |
           {
-            echo "## 🛠️ Build Summary - **${{ env.BUILD_VERSION_FULL }}**"
+            echo "## 🛠️ Build Summary - **${{ steps.versioning.outputs.buildVersionFull }}**"
             echo "- Plataforma: **${{ inputs.buildTarget }}**"
             echo "- Rama: **${{ github.ref_name }}**"
-            echo "- Tamaño de la build: **${{ env.BUILD_SIZE }}**"
-            echo "- Duración: `${{ env.formatted_duration || 'N/A' }}`"
-            echo "- Status: ${{ env.STATUS_CODE }}"
+            echo "- Tamaño de la build: **${{ steps.build-size.outputs.build_size }}**"
+            echo "- Duración: `${{ steps.duration.outputs.duration || 'N/A' }}`"
+            echo "- Status Code: ${{ env.STATUS_CODE }}"
             echo "- Resultado: ${{ env.STATUS }}"
 
             if [ "${{ job.status }}" != "success" ]; then
               echo "- ❗ La compilacion ha fallado antes de completar el artefacto."
             fi
 
-            if [ "${{ env.BUILD_SIZE }}" != "N/A" ]; then
-              echo "- [🔗 Descargar artifact](${{ env.LINK_ACTION }})"
+            if [ "${{ steps.build-size.outputs.build_size }}" != "N/A" ]; then
+              echo "- [🔗 Descargar artifact](${{ steps.set-vars.outputs.link_action }})"
             fi
 
             echo "- Fecha: $(date '+%Y-%m-%d %H:%M:%S')"
