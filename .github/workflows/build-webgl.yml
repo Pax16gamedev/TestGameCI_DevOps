@@ -16,6 +16,10 @@ on:
       publishToItch: 
         required: false
         type: boolean
+      itchioChannel:
+        required: false
+        default: pax16/test-devops:webgl
+        type: string
         description: 'Whether to publish the build to Itch.io.'
       sendToDiscord: 
         required: false
@@ -40,5 +44,6 @@ jobs:
       unityVersion: ${{ inputs.unityVersion }}
       buildTarget: WebGL
       publishToItch: ${{ inputs.publishToItch }}
+      itchioChannel: ${{ inputs.itchioChannel }}
       sendToDiscord: ${{ inputs.sendToDiscord }}
     secrets: inherit
