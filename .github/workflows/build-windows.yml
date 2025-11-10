@@ -36,7 +36,7 @@ on:
 jobs:
   build:
     name: 🪟 Build Windows
-    uses: Pax16gamedev/TestGameCI_DevOps/.github/workflows/build-core.yml@DESARROLLO
+    uses: ./.github/workflows/build-core.yml@main
     with:
       unityVersion: ${{ inputs.unityVersion }}
       buildTarget: StandaloneWindows64

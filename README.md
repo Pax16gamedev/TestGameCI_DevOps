@@ -69,7 +69,7 @@ on:
 
 jobs:
   build-webgl:
-    uses: Pax16gamedev/TestGameCI_DevOps/.github/workflows/build-webgl.yml@DESARROLLO
+    uses: RiojaDevs/GameCI_Devops/.github/workflows/build-webgl.yml@main
     secrets: inherit
     with:
       sendToDiscord: false
@@ -93,7 +93,7 @@ on:
 
 jobs:
   build-windows:
-    uses: Pax16gamedev/TestGameCI_DevOps/.github/workflows/build-windows.yml@DESARROLLO
+    uses: RiojaDevs/GameCI_Devops/.github/workflows/build-windows.yml@main
     with:
       unityVersion: 6000.2.10f1
       sendToDiscord: true

@@ -9,7 +9,7 @@ on:
 
 jobs:
   build-webgl:
-    uses: Pax16gamedev/TestGameCI_DevOps/.github/workflows/build-webgl.yml@DESARROLLO
+    uses: RiojaDevs/GameCI_Devops/.github/workflows/build-webgl.yml@main
     secrets: inherit
     with:
       sendToDiscord: false
