@@ -181,12 +181,12 @@ jobs:
           echo "✅ Build version generada: $BUILD_VERSION_FULL"
 
       # Limpieza agresiva SIN sudo (borra caches de runner y Docker)
-      - name: 🧹 Aggressive cleanup (no sudo)
+      - name: 🧹 Aggressive cleanup
         run: |
           echo "🧹 Cleaning environment to free space..."
           rm -rf $AGENT_TOOLSDIRECTORY $RUNNER_TOOL_CACHE ~/.cache || true
-          rm -rf /tmp/*
-          rm -rf /opt/*
+          sudo rm -rf /tmp/*
+          sudo rm -rf /opt/*
           docker system prune -af || true
           echo ""
           echo "📊 Free space after cleanup:"
