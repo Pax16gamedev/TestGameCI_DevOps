@@ -93,7 +93,7 @@ jobs:
         uses: jlumbroso/free-disk-space@main
         with:
           tool-cache: false
-          android: true
+          android: false
           dotnet: true
           haskell: true
           large-packages: true
@@ -187,7 +187,7 @@ jobs:
           BUILD_TARGET="${{ inputs.buildTarget }}"
 
           case "$BUILD_TARGET" in
-            WebGL) IMAGE="ubuntu-2023.1.8f1-webgl-1.1.2" ;;
+            WebGL) IMAGE="unityci/editor:ubuntu-2023.1.8f1-webgl-1.1.2" ;;
             StandaloneWindows64) IMAGE="unityci/editor:ubuntu-${UNITY_VERSION}-windows-mono-1" ;;
             Android) IMAGE="unityci/editor:ubuntu-${UNITY_VERSION}-android-1" ;;
             *) IMAGE="unityci/editor:ubuntu-${UNITY_VERSION}-base-1" ;;
