@@ -18,6 +18,7 @@ on:
 
 jobs:
   upload:
+    name: Upload to Itchio
     runs-on: ubuntu-latest
     continue-on-error: true
     
