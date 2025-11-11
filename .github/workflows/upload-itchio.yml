@@ -20,8 +20,7 @@ jobs:
   upload:
     runs-on: ubuntu-latest
     continue-on-error: true
-    env:
-      PATH: ~/.local/bin:$PATH
+    
     steps:
       - name: 💾 Cache Butler
         id: cache-butler
@@ -34,21 +33,25 @@ jobs:
         if: steps.cache-butler.outputs.cache-hit != 'true'
         run: |
           echo "🔽 Descargando Butler..."
-          mkdir -p ~/.local/bin
+          mkdir -p "$HOME/.local/bin"
           curl -L -o butler.zip https://broth.itch.ovh/butler/linux-amd64/LATEST/archive/default
           unzip butler.zip
-          mv butler ~/.local/bin/butler
-          chmod +x ~/.local/bin/butler
+          mv butler "$HOME/.local/bin/butler"
+          chmod +x "$HOME/.local/bin/butler"
           echo "✅ Butler instalado correctamente"
           butler -V
 
       - name: 🧾 Verify Butler
+        shell: bash
         run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
           butler -V
           echo "✅ Butler disponible en el PATH"
 
       - name: Push to Itch.io
         id: push
+        shell: bash
         env:
           BUTLER_API_KEY: ${{ secrets.ITCHIO_API_KEY }}
         run: |
