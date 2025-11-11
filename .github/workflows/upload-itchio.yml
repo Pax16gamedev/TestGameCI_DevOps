@@ -64,7 +64,7 @@ jobs:
           CHANNEL="${{ inputs.itchioChannel }}"
           BUILD_PATH="${{ inputs.buildPath }}"
 
-          echo "🗂️ Verificando carpeta: $BUILD_PATH
+          echo "🗂️ Verificando carpeta: $BUILD_PATH"
           if [ ! -d "$BUILD_PATH" ]; then
             echo "❌ Error: No se encontró la carpeta de build: $BUILD_PATH"
             exit 1
