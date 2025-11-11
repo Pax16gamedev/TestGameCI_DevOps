@@ -209,15 +209,7 @@ jobs:
 
           echo "UNITY_VERSION=$UNITY_VERSION" >> $GITHUB_ENV
           echo "unity_version=$UNITY_VERSION" >> $GITHUB_OUTPUT
-          echo "🎯 Unity version final: $UNITY_VERSION"
-
-      - name: 🧾 Unity version summary
-        run: |
-          {
-            echo "## 🎯 Unity Version Used"
-            echo "- Plataforma: **${{ inputs.buildTarget }}**"
-            echo "- Version final: **${{ env.UNITY_VERSION }}**" 
-          } >> $GITHUB_STEP_SUMMARY          
+          echo "🎯 Unity version final: $UNITY_VERSION"       
 
       - name: 🏗️ Build with GameCI
         uses: game-ci/unity-builder@v4
