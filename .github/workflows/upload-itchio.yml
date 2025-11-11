@@ -49,6 +49,12 @@ jobs:
           butler -V
           echo "✅ Butler disponible en el PATH"
 
+      - name: 📦 Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: Build-${{ inputs.buildVersionFull }}
+          path: ${{ inputs.buildPath }}
+
       - name: Push to Itch.io
         id: push
         shell: bash
@@ -58,6 +64,7 @@ jobs:
           CHANNEL="${{ inputs.itchioChannel }}"
           BUILD_PATH="${{ inputs.buildPath }}"
 
+          echo "🗂️ Verificando carpeta: $BUILD_PATH
           if [ ! -d "$BUILD_PATH" ]; then
             echo "❌ Error: No se encontró la carpeta de build: $BUILD_PATH"
             exit 1
