@@ -1,11 +1,7 @@
-name: Build Windows
+name: Build Linux
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - PRE_PRODUCCION
-      - PRODUCCION
   workflow_call:
     inputs: 
       unityVersion:
@@ -32,10 +28,10 @@ on:
 
 jobs:
   build:
-    name: 🪟 Build Windows
+    name: 🐧 Build Linux
     uses: Pax16gamedev/TestGameCI_DevOps/.github/workflows/build-core.yml@DESARROLLO
     with:
       unityVersion: ${{ inputs.unityVersion }}
-      buildTarget: StandaloneWindows64
+      buildTarget: Linux64
       sendToDiscord: ${{ inputs.sendToDiscord }}
     secrets: inherit

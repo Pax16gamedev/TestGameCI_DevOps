@@ -15,6 +15,7 @@ on:
         description: 'Version of Unity to use for the build.'
       publishToItch: 
         required: false
+        default: false
         type: boolean
       itchioChannel:
         required: false
@@ -23,6 +24,7 @@ on:
         description: 'Whether to publish the build to Itch.io.'
       sendToDiscord: 
         required: false
+        default: false
         type: boolean
         description: 'Whether to send a notification to Discord.'
     secrets:

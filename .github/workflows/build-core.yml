@@ -209,15 +209,7 @@ jobs:
 
           echo "UNITY_VERSION=$UNITY_VERSION" >> $GITHUB_ENV
           echo "unity_version=$UNITY_VERSION" >> $GITHUB_OUTPUT
-          echo "🎯 Unity version final: $UNITY_VERSION"
-
-      - name: 🧾 Unity version summary
-        run: |
-          {
-            echo "## 🎯 Unity Version Used"
-            echo "- Plataforma: **${{ inputs.buildTarget }}**"
-            echo "- Version final: **${{ env.UNITY_VERSION }}**" 
-          } >> $GITHUB_STEP_SUMMARY          
+          echo "🎯 Unity version final: $UNITY_VERSION"     
 
       - name: 🏗️ Build with GameCI
         uses: game-ci/unity-builder@v4
@@ -287,7 +279,7 @@ jobs:
 
           echo "formatted_duration=$formatted_duration" >> $GITHUB_ENV
           echo "duration=$formatted_duration" >> $GITHUB_OUTPUT
-          echo "Total time: $formatted_duration"
+          echo "Total time: $duration"
 
       - name: Set variables
         if: always()
@@ -372,7 +364,7 @@ jobs:
             echo "- Plataforma: **${{ inputs.buildTarget }}**"
             echo "- Rama: **${{ github.ref_name }}**"
             echo "- Tamaño de la build: **${{ steps.build-size.outputs.build_size }}**"
-            echo "- Duración: `${{ steps.duration.outputs.duration || 'N/A' }}`"
+            echo "- Duración: ${{ steps.duration.outputs.duration }}"
             echo "- Status Code: ${{ env.STATUS_CODE }}"
             echo "- Resultado: ${{ env.STATUS }}"
 
