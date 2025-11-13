@@ -32,6 +32,6 @@ jobs:
     uses: Pax16gamedev/TestGameCI_DevOps/.github/workflows/build-core.yml@DESARROLLO
     with:
       unityVersion: ${{ inputs.unityVersion }}
-      buildTarget: Linux64
+      buildTarget: StandaloneLinux64
       sendToDiscord: ${{ inputs.sendToDiscord }}
     secrets: inherit
